@@ -29,26 +29,26 @@ print(f"[+] {address} is connected.")
 def recieve_image():
     global client_socket, BUFFER_SIZE
     try: 
+        if os.path.exists("temp.png"):
+            print("[+] Removing old image")
+            os.remove("temp.png")
 
-        print("[+] Receiving image size...")
         file_size = int(client_socket.recv(BUFFER_SIZE).decode())
 
-        print(f"[+] Image size: {file_size}")
-        image = b''
-        print("[+] Receiving image...")
-        bytes_received = 0
-        while bytes_received < file_size:
-            bytes_read = client_socket.recv(BUFFER_SIZE)
-            print(f"[+] Bytes read: {len(bytes_read)}")
-            if not bytes_read:
-                break
-            image += bytes_read
-            print("image: ", image)
-            bytes_received += len(bytes_read)
-        print("[+] Image received.")
+        with open("temp.png", "wb") as f:
+            print("[+] Receiving...")
 
-        return image
-    
+            print("[+] Writing to temp.png")
+
+            bytes_received = 0
+            while bytes_received < file_size:
+                bytes_read = client_socket.recv(BUFFER_SIZE)
+                if not bytes_read:
+                    break
+                f.write(bytes_read)
+                bytes_received += len(bytes_read)
+            f.close()
+        print("[+] Image received.")
     except Exception as e:
         print(f"[-] ERROR! Exiting...\n{e}")
         s.close()
@@ -69,10 +69,10 @@ screen_scaling_factor = master.winfo_screenheight() / master.winfo_screenwidth()
 
 def update_image():
 
-    print("[+] Receiving image...")
-    img = recieve_image()
+    recieve_image()
     print("[+] Updating image...")
-
+    
+    img = Image.open("temp.png")
     scaled_img = img.resize((int(img.width * screen_scaling_factor), int(img.height * screen_scaling_factor)))
     bgimg = ImageTk.PhotoImage(scaled_img)
     limg.config(image=bgimg)
@@ -81,9 +81,15 @@ def update_image():
     print("[+] Image updated.")
 
     os.remove("temp.png")
+
+    print("[+] Removed temp image.")
+
+    print("[+] Sending success message...")
     
     client_socket.send("success".encode())
-    master.after(50, update_image)
+
+    print("[+] Updating again...")
+    master.after(500, update_image)
 
 
 

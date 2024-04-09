@@ -3,10 +3,9 @@ import os
 import pyautogui
 import time
 import sys
-import io
-import PIL.Image as Image
 
-os.system("chcp 65001")
+if os.getenv("OS") == "Windows_NT":
+    os.system("chcp 65001")
 
 SEPARATOR = "<SEPARATOR>"
 BUFFER_SIZE = 4096
@@ -14,6 +13,13 @@ BUFFER_SIZE = 4096
 host = sys.argv[1]
 
 port = 5001
+
+filename = "test.png"
+
+if os.path.exists(filename) is False:
+    pyautogui.screenshot(filename)
+
+filesize = os.path.getsize(filename)
 
 
 
@@ -27,26 +33,26 @@ try:
     print("[+] Connected.")
     while True:
         print("[+] Sending image...")
-        time.sleep(0.2)
-        image = pyautogui.screenshot()
-        im = Image.fromarray(image)
-        b = io.BytesIO()
-        im.save(b, format="PNG")
-        image_bytes = b.getvalue()
-        print("[+] Image captured. Size: ", len(image_bytes))
-        with open("out.txt", "a") as f:
-            f.write(str(image_bytes))
-        
+        time.sleep(0.5)
+        if os.path.exists(filename):
+            print("[+] Removing old image")
+            os.remove(filename)
 
-        s.send(f"{len(image_bytes)}".encode())
-        for i in range(0, len(image), BUFFER_SIZE):
-            if i+BUFFER_SIZE > len(image_bytes):
-                byte = image_bytes[i:]
-            else:
-                byte = image_bytes[i:i+BUFFER_SIZE]
-            s.sendall(byte)
-            print(f"[+] Sent {len(byte)} bytes.")
+        print("[+] Capturing screenshot")
+        pyautogui.screenshot(filename)
+        
+        print("[+] Sending...")
+        s.send(f"{os.path.getsize(filename)}".encode())
+        with open(filename, "rb") as f:
+            while True:
+                bytes_read = f.read(BUFFER_SIZE)
+                if not bytes_read:
+
+                    break
+                s.sendall(bytes_read)
         print("[+] Image sent.")
+
+        print("[+] Waiting for response...")
         s.recv(1024)
 
 except KeyboardInterrupt:
